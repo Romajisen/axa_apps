@@ -44,14 +44,12 @@ namespace ProductApi.Repositories
             }
         }
 
+        // ✅ Benar
         public async Task<IEnumerable<Product>> GetAllAsync()
         {
-            return await _cache.GetOrCreateAsync("all_products", entry =>
-            {
-                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
-                return Task.FromResult(_context.Products.AsEnumerable());
-            });
+            return await _context.Products.ToListAsync();
         }
+
 
         public async Task<IEnumerable<Product>> SearchAsync(string? name, decimal? minPrice, decimal? maxPrice)
         {
@@ -71,12 +69,19 @@ namespace ProductApi.Repositories
 
         public async Task UpdateAsync(Product product)
         {
-            _context.Products.Update(product);
+            var existing = await _context.Products.FindAsync(product.Id);
+            if (existing == null)
+                throw new InvalidOperationException("Product not found");
+
+            existing.Name = product.Name;
+            existing.Price = product.Price;
+
             await _context.SaveChangesAsync();
 
             _cache.Remove($"product_{product.Id}");
             _cache.Remove("all_products");
         }
+
 
     }
 }
